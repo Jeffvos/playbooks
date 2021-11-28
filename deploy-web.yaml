@@ -1,0 +1,41 @@
+---
+- name: deploy web
+  hosts: all
+  tasks:
+  - name: gather files
+    shell: (cd ~/{{ web_version }}; find . -maxdepth 1 -type f) | cut -d'/' -f2
+    register: files_to_fetch
+ 
+  - name: gathered files
+    ansible.builtin.debug:
+      msg: "{{ files_to_fetch.stdout_lines }}"
+    when: "{{ inventory_hostname == 'sftp' }}"
+
+  - name: fetch remote files
+    fetch: 
+      src=~/{{ web_version }}/{{ item }} 
+      dest=buffer/  
+      flat=yes
+    with_items: "{{ files_to_fetch.stdout_lines }}"
+    when: "{{ inventory_hostname == 'sftp' }}"
+
+  - name: empty www folder
+    run_once: yes
+    file:
+      state: absent
+      path: /var/www/html
+    when: "{{ inventory_hostname == 'webserver' }}"
+
+  - name: create www dir
+    run_once: yes
+    file:
+      path: /var/www/html
+      state: directory
+    when: "{{ inventory_hostname == 'webserver' }}"
+
+  - name: deploy portal
+    copy: 
+      src={{ item }}
+      dest=/var/www/html/
+    with_fileglob: buffer/*
+    when: "{{ inventory_hostname == 'webserver'}}"
