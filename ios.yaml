@@ -1,0 +1,50 @@
+---
+# ansible playbook for cisco ios 
+- name: prepare local space for backup config cisco ios device
+  hosts: localhost
+
+  tasks:
+  - name: get current date time
+    setup:
+      filter: "ansible_date_time"
+      gather_subset: "!all"
+  - name: strog date time
+    set_fact:
+      date_time: "{{ ansible_date_time.date }}"
+  - name: create dir {{hostvars.localhost.date_time}}
+    file:
+      path: backups/{{hostvars.localhost.date_time}}
+      state: directory
+  run_once: true 
+
+- name: get state of device
+  hosts: ROUTERS
+
+  tasks:
+
+  - name: get current cpu temp
+    ios_command:
+      commands: show env all | incl CPU
+    register: device_temp
+
+  - name: get current ios version
+    ios_command:
+      commands: show version | incl Version
+    register: ios_version
+
+  - name: get IP routes
+    ios_command:
+      commands: show ip route
+    register: device_ip_routes
+
+  - name: Print device temp
+    debug:
+      var: device_temp.stdout_lines
+
+  - name: Print device ios version
+    debug:
+      var: ios_version.stdout_lines
+  
+  - name: Print device IP routes
+    debug:
+      var: device_ip_routes.stdout_lines
